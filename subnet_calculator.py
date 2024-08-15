@@ -1,11 +1,25 @@
+# Subnet Calculator 
+# Haim Cohen 2024
+# https://www.linkedin.com/in/haimc/
+
+
 import streamlit as st
 import ipaddress
+import subprocess
+
 
 st.set_page_config(page_title="Subnet Calculator")
 
+def get_wan_ip():
+    try:
+        wan_ip = subprocess.check_output(["curl", "-sS", "ifconfig.me/ip"]).decode('utf-8').strip()
+        return f"{wan_ip}/32"
+    except subprocess.CalledProcessError:
+        return "Error: Could not retrieve WAN IP"
+
 def calculate_subnet(ip: str):
     try:
-        # Check if the input is in CIDR notation
+
         if '/' in ip:
             network = ipaddress.IPv4Network(ip, strict=False)
             subnet_mask = str(network.netmask)
@@ -19,7 +33,7 @@ def calculate_subnet(ip: str):
         ip_type = "Private" if network.is_private else "Public"
         cidr = network.prefixlen
         
-        # Handle special case for /32
+
         if cidr == 32:
             usable_host_range = "NA"
             usable_host_count = 0
@@ -61,35 +75,56 @@ def calculate_ip_class(network_address):
     else:
         return 'E'
 
-# Initialize session state to store input values
+
 if 'ip_address' not in st.session_state:
-    st.session_state['ip_address'] = "192.168.10.1/24"
+    st.session_state['ip_address'] = get_wan_ip()
 
-st.title("Subnet Calculator")
-st.subheader("Enter the IP address and subnet mask or CIDR:")
 
-ip_input = st.text_input("IP Address and Subnet Mask/CIDR. For example: 192.168.10.1/255.255.255.0 or 192.168.10.1/24", st.session_state['ip_address'])
+st.sidebar.title("Navigation")
+page = st.sidebar.radio("Go to", ["Subnet Calculator", "About"])
 
-if st.button("Calculate"):
-    result = calculate_subnet(ip_input)
-    if result:
-        st.session_state['ip_address'] = ip_input
+if page == "Subnet Calculator":
+    st.title("Subnet Calculator")
+    st.subheader("Enter the IP address and subnet mask or CIDR:")
 
-        # Display the result in a read-only code block
-        result_text = (
-            f"IP Address: {result['IP Address']}\n"
-            f"Network Address: {result['Network Address']}\n"
-            f"Usable Host IP Range: {result['Usable Host IP Range']}\n"
-            f"Broadcast Address: {result['Broadcast Address']}\n"
-            f"Total Number of Hosts: {result['Total Number of Hosts']}\n"
-            f"Number of Usable Hosts: {result['Number of Usable Hosts']}\n"
-            f"Subnet Mask: {result['Subnet Mask']}\n"
-            f"Wildcard Mask: {result['Wildcard Mask']}\n"
-            f"IP Class: {result['IP Class']}\n"
-            f"CIDR Notation: {result['CIDR Notation']}\n"
-            f"IP Type: {result['IP Type']}\n"
-        )
-        st.code(result_text, language='text')  
-if st.button("Reset"):
-    st.session_state['ip_address'] = "192.168.1.1/24"
-    st.experimental_rerun()
+    ip_input = st.text_input("IP Address and Subnet Mask/CIDR", st.session_state['ip_address'])
+
+    if st.button("Calculate"):
+        result = calculate_subnet(ip_input)
+        if result:
+            st.session_state['ip_address'] = ip_input
+
+
+            result_text = (
+                f"IP Address: {result['IP Address']}\n"
+                f"Network Address: {result['Network Address']}\n"
+                f"Usable Host IP Range: {result['Usable Host IP Range']}\n"
+                f"Broadcast Address: {result['Broadcast Address']}\n"
+                f"Total Number of Hosts: {result['Total Number of Hosts']}\n"
+                f"Number of Usable Hosts: {result['Number of Usable Hosts']}\n"
+                f"Subnet Mask: {result['Subnet Mask']}\n"
+                f"Wildcard Mask: {result['Wildcard Mask']}\n"
+                f"IP Class: {result['IP Class']}\n"
+                f"CIDR Notation: {result['CIDR Notation']}\n"
+                f"IP Type: {result['IP Type']}\n"
+            )
+            st.code(result_text, language='text') 
+
+    if st.button("Reset"):
+        st.session_state['ip_address'] = get_wan_ip()
+        st.experimental_rerun()
+
+elif page == "About":
+    st.title("About")
+    st.write("""
+        **Subnet Calculator**  
+        Version: 1.0.0  
+        Author: Haim Cohen  
+        [GitHub Repository](https://github.com/sk3pp3r/subnet-calc)     
+        [LinkedIn](https://www.linkedin.com/in/haimc/)
+
+        This tool allows you to calculate subnets by providing an IP address in CIDR notation or with a subnet mask. It provides information on network address, usable host range, broadcast address, and more.
+    """)
+
+st.markdown("***") 
+st.caption(f'Develop by Haim Cohen 2024 :sunglasses:')
